@@ -187,9 +187,10 @@ def main() -> None:
     parser.add_argument("transcripts", type=Path)
     parser.add_argument("out", type=Path)
     parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--tests", type=Path, default=TEST_SET, help="test set JSON (default: tests/test-set.json)")
     args = parser.parse_args()
 
-    spec = json.loads(TEST_SET.read_text())
+    spec = json.loads(args.tests.read_text())
     tests = {t["id"]: t for t in spec["tests"]}
     facts = FACTS.read_text()
     transcripts = [json.loads(line) for line in args.transcripts.read_text().splitlines() if line.strip()]

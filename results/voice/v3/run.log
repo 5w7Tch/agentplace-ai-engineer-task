@@ -1,0 +1,16 @@
+ok   V01 trial 1
+ok   V04 trial 1
+ok   V02 trial 1
+ok   V03 trial 1
+ok   V05 trial 1
+ok   V06 trial 1
+ok   V01 trial 2
+ok   V07 trial 1
+ok   V02 trial 2
+ok   V04 trial 2
+ok   V03 trial 2
+ok   V05 trial 2
+ok   V06 trial 2
+ok   V07 trial 2
+wrote 14/14 transcripts -> results/voice/v3/transcripts.jsonl
+exit 0

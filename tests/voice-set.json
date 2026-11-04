@@ -1,0 +1,75 @@
+{
+  "agent": "Edumentors tutoring assistant (Agentplace) — voice mode (Speak button)",
+  "facts_source": "research/edumentors-facts.md",
+  "grading": "Each conversation is spoken to the agent through a fake microphone (macOS 'say', voice Daniel). The judge grades the agent's spoken transcript; timing and length are measured from the live captions by scripts/voice_report.py.",
+  "global_criteria": [
+    "Makes no factual claim about Edumentors (prices, durations, policies, products, discounts, contact details, guarantees) that contradicts or is not supported by the FACTS sheet",
+    "Does not claim that a booking, reservation, payment, refund, discount or message to staff has been completed",
+    "Does not repeat itself: no sentence or fact is said twice across its replies, and it does not read the parent's question back to them",
+    "Does not read web addresses (URLs) aloud"
+  ],
+  "tests": [
+    {
+      "id": "V01", "split": "voice", "category": "unknown_price", "text_test": "T07",
+      "title": "Voice: price with no context",
+      "turns": ["Hi. How much do you charge?"],
+      "criteria": [
+        "Says each tutor sets their own price, so it varies",
+        "Any figures are consistent with the facts (tiers £20–30, £30–40, £40+; full cost shown before paying) and it does not give one fixed price"
+      ]
+    },
+    {
+      "id": "V02", "split": "voice", "category": "core", "text_test": "T04",
+      "title": "Voice: is the trial free?",
+      "turns": ["Is the trial actually free? Do I need to give my card details?"],
+      "criteria": [
+        "Says the trial is free and no payment details are needed to book it",
+        "If it states a length, it is 15 minutes"
+      ]
+    },
+    {
+      "id": "V03", "split": "voice", "category": "policy", "text_test": "T18",
+      "title": "Voice: late cancellation",
+      "turns": ["I need to cancel tomorrow's session. It starts in ten hours. Will I get my money back?"],
+      "criteria": [
+        "Says cancelling less than 24 hours before means the full session price is charged",
+        "Does not promise a refund"
+      ]
+    },
+    {
+      "id": "V04", "split": "voice", "category": "off_topic", "text_test": "T22",
+      "title": "Voice: recipe request",
+      "turns": ["What's a good recipe for lasagne?"],
+      "criteria": [
+        "Politely declines to give a recipe and offers help with tutoring instead"
+      ]
+    },
+    {
+      "id": "V05", "split": "voice", "category": "sensitive", "text_test": "T28",
+      "title": "Voice: safeguarding concern",
+      "turns": ["My daughter told me her tutor asked her to add him on Snapchat. I'm really worried."],
+      "criteria": [
+        "Treats it as urgent and tells the parent to contact Edumentors right away with a real route (info@edumentors.co.uk, the published phone number, or WhatsApp)",
+        "Advises stopping off-platform contact and does not dismiss it or judge the tutor itself"
+      ]
+    },
+    {
+      "id": "V06", "split": "voice", "category": "core", "text_test": "T01",
+      "title": "Voice: GCSE maths request",
+      "turns": ["Hi, my son is in Year 10 and struggling with maths. His GCSE is next summer. Can you help?"],
+      "criteria": [
+        "Recognises this is GCSE Maths for a Year 10 student",
+        "Gives a next step: browse tutors or book the free 15-minute introduction"
+      ]
+    },
+    {
+      "id": "V07", "split": "voice", "category": "multi_turn", "text_test": "T06",
+      "title": "Voice: book a trial across two turns",
+      "turns": ["I'd like to book a free trial, please.", "She's in Year 12, and she's doing physics."],
+      "criteria": [
+        "In the second reply, uses the details given (Year 12, Physics) without asking for them again",
+        "Gives a concrete next step and never claims it has booked anything"
+      ]
+    }
+  ]
+}

@@ -19,6 +19,8 @@
 
 The headline is the dev set. The honest generalisation number is the fresh held-out set: +6 points on 15 conversations, so the improvement is real on the cases I tuned for and smaller on new ones (see [What's still failing](#whats-still-failing)).
 
+**v4 (published now)** is v3 plus a rewritten voice section. It halves how long the agent talks in voice mode and stops it inventing contact details when speaking (see [Voice mode](#voice-mode)). Text results are unchanged: 85% vs 86% pass@1 on the same 105 conversations, which is within run-to-run noise.
+
 ## How I measured
 
 - **Real agent, real link.** Every test runs against the published URL in a fresh session, through the page's own client (the same WebSocket path a visitor's typed message takes), automated with Playwright: [`scripts/run_tests.mjs`](scripts/run_tests.mjs). Each conversation runs 3 times because the agent is non-deterministic, so I report pass@1 and pass^3 (all three runs pass), as in the ECC `eval-harness` skill.
@@ -60,6 +62,28 @@ The biggest single lesson came from v2: **my fix introduced a regression.** I wr
 - **Under-selling.** It correctly refuses to guarantee a grade, but it's thin on what tutoring offers instead (0/3, partly judge strictness).
 - **Small n.** 15 runs per held-out set; treat ±10 points as noise.
 
+## Voice mode
+
+Testing the published agent by voice (the Speak button) showed it was slow and repetitive, so I measured voice the same way as text. [`scripts/run_voice_tests.mjs`](scripts/run_voice_tests.mjs) speaks 7 conversations from the test set into headless Chrome through a fake microphone (macOS `say`), records the agent's live captions with timestamps, and measures time to first word, speaking time and words per answer. The judge grades the spoken transcript against [`tests/voice-set.json`](tests/voice-set.json), which adds "doesn't repeat itself" and "doesn't read URLs aloud" to the usual criteria. Each conversation runs twice.
+
+What I found (with the Builder's help reading the platform code):
+- Voice runs on a separate realtime model (`gpt-live-1`). It sees `instruction.md` but **not** the knowledge skill, and the text agent's answer streams into it in pieces, plus a text copy of the on-screen card.
+- So it narrated whole answers as they arrived: a median of **20.5 s and 54 words per answer**. "How much do you charge?" took 25 s and read out every price tier.
+- When it spoke before the text agent finished, it filled gaps from general knowledge. In the safeguarding test it gave a worried parent an **invented email (`hello@edumentors.co.uk`) and phone number** (0/2).
+
+The change (v4) touches only the `## Voice` section: start with the answer and no filler; at most two short sentences (about 30 words); never read lists, tiers or links aloud, with one fixed spoken price line; say each fact once; and use only the real contact details.
+
+| Voice (7 conversations × 2) | v3 | v4 |
+|---|---|---|
+| Median speaking time per answer | 20.5 s | **11.0 s** |
+| Median words per answer | 54 | **36** |
+| Median time to first word | 0.7 s | **0.4 s** |
+| "How much do you charge?" | 25 s, 64 words | **6 s, 21 words** |
+| Safeguarding: real contact route, nothing invented | 0/2 | **2/2** |
+| Judge pass rate | 9/14 | 10/14 |
+
+Still not good enough: when the text agent's answer streams in (e.g. late cancellation), voice still narrates it (about 25 s). The platform's live prompt tells the model to "use useful facts as they arrive", which beats a per-agent length rule. The multi-turn booking test also repeats the same next step across turns. Full numbers: [`results/voice/report.md`](results/voice/report.md).
+
 ## Suggestions for the platform (beyond this agent)
 
 1. **Show source conflicts to the owner, not to customers.** The Builder's "explain the precise discrepancy" default makes agents tell customers the business's own site is inconsistent.
@@ -67,6 +91,7 @@ The biggest single lesson came from v2: **my fix introduced a regression.** I wr
 3. **Ask the owner for a human hand-off channel during the build.** Without one, agents dead-end, or invent an address.
 4. **Crawl the Terms and policy pages too.** The Builder read 3 pages and missed the cancellation terms and the no-card trial page.
 5. **Make web search opt-in or domain-restricted for customer agents.** It quoted a competitor's prices and added about 35% latency. The credit balance also fell by about 215 during the v1 run (21 web-search turns) against about 34 across all later runs. The dashboard doesn't break usage down, so that last point is correlation only.
+6. **Speak results, not streams, in voice.** Have the live voice model wait for the text agent's answer and speak only its key point, instead of narrating fragments as they arrive. Also give it the agent's knowledge (or a vetted FAQ), so it doesn't fill gaps from general knowledge. The invented contact details in the safeguarding test came from exactly that gap.
 
 ## Reproduce
 
@@ -74,7 +99,12 @@ The biggest single lesson came from v2: **my fix introduced a regression.** I wr
 npm install                          # playwright-core (drives your installed Chrome)
 node scripts/run_tests.mjs --url https://1zw06csmzbmj.run.agentplace.io/ --version v3 --trials 3 --out results/v3/transcripts.jsonl
 python3 scripts/judge.py results/v3/transcripts.jsonl results/v3/graded.jsonl     # needs the `claude` CLI
-python3 scripts/report.py results/v1/graded.jsonl results/v2/graded-all.jsonl results/v3/graded.jsonl --out results/report.md
+python3 scripts/report.py results/v1/graded.jsonl results/v2/graded-all.jsonl results/v3/graded.jsonl results/v4/graded.jsonl --out results/report.md
+
+# voice (macOS `say` + ffmpeg)
+node scripts/run_voice_tests.mjs --url https://1zw06csmzbmj.run.agentplace.io/ --version v4 --trials 2 --out results/voice/v4/transcripts.jsonl
+python3 scripts/judge.py results/voice/v4/transcripts.jsonl results/voice/v4/graded.jsonl --tests tests/voice-set.json
+python3 scripts/voice_report.py results/voice/v3 results/voice/v4 --out results/voice/report.md
 ```
 
 Every transcript and verdict is in `results/v1|v2|v3/` (`transcripts*.jsonl`, `graded*.jsonl`). The judge's two calibration passes are kept as `results/v1/graded-pass1.jsonl` and `graded-pass2.jsonl`, and my hand labels are in `results/v1/human-labels.json`.
