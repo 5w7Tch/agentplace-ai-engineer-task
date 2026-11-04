@@ -1,0 +1,12 @@
+{
+  "name": "edumentors-agent-eval",
+  "private": true,
+  "type": "module",
+  "description": "Eval harness for the Edumentors agent on Agentplace (GPT-6 Luna)",
+  "scripts": {
+    "run-tests": "node scripts/run_tests.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "note": "Manual pass/fail by the author for trial 1 of every dev test, made from the transcripts before v2 existed. Used to calibrate the LLM judge.",
+  "labels": {"T01": true, "T02": false, "T03": true, "T04": false, "T05": false, "T06": true, "T07": true, "T08": true,
+             "T09": true, "T10": false, "T11": true, "T12": false, "T13": false, "T15": true, "T16": false, "T18": true,
+             "T19": false, "T20": false, "T21": false, "T22": false, "T24": false, "T25": true, "T26": false, "T28": false, "T29": true}
+}
