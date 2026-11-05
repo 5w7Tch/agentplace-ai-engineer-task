@@ -82,19 +82,30 @@ async function runConversation(browser, test, trial) {
     const turns = [];
     for (const message of test.turns) {
       const started = Date.now();
-      const items = await page.evaluate(async ({ instruction, agentErrorPattern }) => {
+      const { items, firstContentMs } = await page.evaluate(async ({ instruction, agentErrorPattern }) => {
         const ms = window.container.messagesStore;
+        const sentAt = performance.now();
         const { responseId, done } = await ms.sendMessageForQuery({ instruction });
+        // Time until the parent first sees any reply text on screen.
+        let firstContentMs = null;
+        const visible = () => ms.contents.some((c) => c.responseId === responseId && c.role !== "user" && !c.hidden
+          && (c.fallbackText || c.fallbackMarkdown || (typeof c.content === "string" && c.content)));
+        const poll = setInterval(() => {
+          if (firstContentMs === null && visible()) firstContentMs = Math.round(performance.now() - sentAt);
+        }, 50);
         try {
           await done;
         } catch (err) {
           // An error the agent shows the parent is the agent's reply, not a harness failure.
           if (new RegExp(agentErrorPattern).test(err.message)) {
-            return [{ content: `[Agent error shown to the parent: "${err.message}"]` }];
+            return { items: [{ content: `[Agent error shown to the parent: "${err.message}"]` }], firstContentMs: null };
           }
           throw err;
+        } finally {
+          clearInterval(poll);
         }
-        return ms.contents
+        firstContentMs ??= Math.round(performance.now() - sentAt);
+        const items = ms.contents
           .filter((c) => c.responseId === responseId && c.role !== "user" && !c.hidden)
           .map((c) => ({
             componentName: c.componentName,
@@ -103,10 +114,11 @@ async function runConversation(browser, test, trial) {
             fallbackText: c.fallbackText,
             content: typeof c.content === "string" ? c.content : undefined,
           }));
+        return { items, firstContentMs };
       }, { instruction: message, agentErrorPattern: AGENT_ERROR_PATTERN });
       const reply = renderReply(items);
       if (!reply.agent) throw new Error(`empty reply to: ${message}`);
-      turns.push({ user: message, ...reply, latency_ms: Date.now() - started });
+      turns.push({ user: message, ...reply, first_content_ms: firstContentMs, latency_ms: Date.now() - started });
     }
     return { version: args.version, test_id: test.id, trial, session_id: sessionId, turns };
   } finally {

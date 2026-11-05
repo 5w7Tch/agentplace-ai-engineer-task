@@ -84,6 +84,20 @@ The change (v4) touches only the `## Voice` section: start with the answer and n
 
 Still not good enough: when the text agent's answer streams in (e.g. late cancellation), voice still narrates it (about 25 s). The platform's live prompt tells the model to "use useful facts as they arrive", which beats a per-agent length rule. The multi-turn booking test also repeats the same next step across turns. Full numbers: [`results/voice/report.md`](results/voice/report.md).
 
+## Latency
+
+I measured **time to first visible text** (what a parent actually waits for) and time to the full reply on all 105 conversations, then tested the two speed settings available at the agent level, one at a time.
+
+| Text (105 conversations each) | First text, median / p90 | Full reply, median | Pass@1 |
+|---|---|---|---|
+| v4 (three identical runs) | 2.54–2.60 s / 4.14–4.29 s | 2.76–2.97 s | 89–95/105 |
+| v5: reasoning effort `low` → `none` | 2.58 s / 4.24 s | 2.86 s | 88/105 |
+| v6: all web retrieval off | 3.03 s / 4.29 s | 3.36 s | 87/105 |
+
+Neither setting helped. Identical v4 runs already differ by about 0.2 s in latency and by up to 6 conversations in pass count, so differences that size are noise. v6 also lost a held-out test: 0/3 on the journalist asking for tutors' numbers. So the published agent keeps v4's configuration. The Builder left a `webRetrievalEnabled: true` switch in place, which behaves exactly like v4.
+
+Why: the first text arrives after about 2.6 s whatever the answer's length. The Builder's trace shows each turn sends about 24.5k prompt tokens, of which this agent's instructions and knowledge are only about 4k; the rest is the platform's tool catalogue and UI-component instructions. Every reply is also delivered through a RenderSurface tool call. The latency floor is the platform's per-turn overhead, not this agent's configuration. The voice fix above was the latency win that mattered: it halved how long the agent talks.
+
 ## Suggestions for the platform (beyond this agent)
 
 1. **Show source conflicts to the owner, not to customers.** The Builder's "explain the precise discrepancy" default makes agents tell customers the business's own site is inconsistent.
@@ -92,6 +106,7 @@ Still not good enough: when the text agent's answer streams in (e.g. late cancel
 4. **Crawl the Terms and policy pages too.** The Builder read 3 pages and missed the cancellation terms and the no-card trial page.
 5. **Make web search opt-in or domain-restricted for customer agents.** It quoted a competitor's prices and added about 35% latency. The credit balance also fell by about 215 during the v1 run (21 web-search turns) against about 34 across all later runs. The dashboard doesn't break usage down, so that last point is correlation only.
 6. **Speak results, not streams, in voice.** Have the live voice model wait for the text agent's answer and speak only its key point, instead of narrating fragments as they arrive. Also give it the agent's knowledge (or a vetted FAQ), so it doesn't fill gaps from general knowledge. The invented contact details in the safeguarding test came from exactly that gap.
+7. **Cut the fixed cost of every turn.** Cache the static ~20k-token platform prefix, give each agent only the tools it actually uses, and offer a plain-text fast path for short answers instead of always composing a surface. Agent-level settings (reasoning effort, disabling web tools) did not move first-text latency at all.
 
 ## Reproduce
 
